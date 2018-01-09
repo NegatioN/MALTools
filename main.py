@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+#!/usr/bin/env python3
 from malparser import MAL
 import requests
 from xml.etree import cElementTree as ET
@@ -6,15 +6,15 @@ from pprint import pprint
 import time
 import json
 import os
-
+from tqdm import tqdm
 
 username = 'NegatioN'
 sleep = 0.5
-
+save_path = 'mydata.json'
 
 mal = MAL()
 
-status_names = {
+STATUS_NAMES = {
     1: 'watching',
     2: 'completed',
     3: 'on hold',
@@ -23,7 +23,7 @@ status_names = {
     7: 'rewatching'  # this not exists in API
 }
 
-user_agent = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) '
+USER_AGENT = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) '
               'AppleWebKit/537.36 (KHTML, like Gecko) '
               'Chrome/34.0.1847.116 Safari/537.36')
 
@@ -34,7 +34,7 @@ def anime_list(username, status='all', type='anime', stats=False):
     r = requests.get(
         'http://myanimelist.net/malappinfo.php',
         params=payload,
-        headers={'User-Agent': user_agent}
+        headers={'User-Agent': USER_AGENT}
     )
     if "_Incapsula_Resource" in r.text:
         raise RuntimeError("Request blocked by Incapsula protection")
@@ -54,7 +54,7 @@ def anime_list(username, status='all', type='anime', stats=False):
                 'score': int(entry['my_score']),
                 'total_episodes': int(entry['series_episodes']),
                 'rewatching': int(entry['my_rewatching'] or 0),
-                'status_name': status_names[int(entry['my_status'])],
+                'status_name': STATUS_NAMES[int(entry['my_status'])],
             }
             # if was rewatching, so the status_name is rewatching
             if result[entry_id]['rewatching']:
@@ -70,8 +70,6 @@ def anime_list(username, status='all', type='anime', stats=False):
 
     return result
 
-save_path = 'mydata.json'
-
 if os.path.isfile(save_path):
     with open(save_path, 'r') as f:
         my_list = json.load(f)
@@ -79,21 +77,13 @@ if os.path.isfile(save_path):
 else:
     my_list = anime_list(username=username)
 
-    for i, (idd, info) in enumerate(my_list.items()):
+    for idd, info in tqdm(my_list.items()):
         anime = mal.get_anime(idd)
         anime.fetch()
         info['info'] = anime.info
         time.sleep(sleep)
-        if i % 10 == 0:
-            print("Fetched info about {} anime from list".format(i))
 
     with open(save_path, 'w+') as f:
         json.dump(my_list, f)
 
 pprint(my_list)
-
-#print(len(my_list))
-
-#anime = mal.get_anime(1575)
-#anime.fetch()
-#print(anime.aired)
